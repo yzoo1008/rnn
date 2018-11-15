@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import os
+
 
 tf.set_random_seed(108)
 
@@ -23,7 +25,7 @@ learning_rate = 0.004
 num_epoch = 100
 check_step = 1
 
-TEST_IDX = 40  # 0 ~ 103
+TEST_IDX = 10  # 0 ~ 103
 TRAIN_SIZE = 103
 
 
@@ -112,9 +114,8 @@ testY = dataY[TEST_IDX]
 trainX = np.delete(dataX, TEST_IDX, axis=0)
 trainY = np.delete(dataY, TEST_IDX, axis=0)
 
-print(np.shape(testX), "/", np.shape(testY))
-print(np.shape(trainX), "/", np.shape(trainY))
-
+# print(np.shape(testX), "/", np.shape(testY))
+# print(np.shape(trainX), "/", np.shape(trainY))
 
 X = tf.placeholder(tf.float32, [None, seq_length, input_data_dim])
 Y = tf.placeholder(tf.float32, [None, 1])
@@ -148,6 +149,7 @@ with tf.Session() as sess:
                 total_loss += (step_loss / TRAIN_SIZE)
         if epoch % check_step == 0:
             print("[step: {}] loss: {}".format(epoch, total_loss))
+
     print("Train Finish, Collapse Time: {}s".format(time.time() - train_start_time))
 
     # Test Session
@@ -160,7 +162,7 @@ with tf.Session() as sess:
         test_predict[days + seq_length] = sess.run(Y_prediction, feed_dict={X: feedX})
 
     rmse_val = sess.run(rmse, feed_dict={targets: testY, predictions: test_predict[seq_length:]})
-    #
+
     # print("RMSE: {}".format(rmse_val))
     print("Test Finish, Collapse Time: {}s".format(time.time() - test_start_time))
 
