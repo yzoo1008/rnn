@@ -68,6 +68,9 @@ prod = np.loadtxt(prod_path)
 day = np.loadtxt(day_path)
 prod = prod[85:, ].T
 day = day[85:, ]
+
+DAYS = np.shape(day)[0]
+INPUT_DAYS = 65
 # min max scaling for training
 prod_sc = min_max_scaling(prod).T
 
@@ -85,8 +88,10 @@ for num in range(0, len(prod_sc[0])):
     for idx in range(0, len(prod_sc) - seq_length):
         _x = prod_sc[idx: idx + seq_length, num]
         _y = prod_sc[idx + seq_length, num]
+        '''
         if idx == 0:
             print(_x, "->", _y)
+        '''
         x_n.append(_x)
         y_n.append(_y)
     dataX.append(x_n)
@@ -132,6 +137,7 @@ rmse = tf.sqrt(tf.reduce_mean(tf.square(targets - predictions)))
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
+    # Train Session
     print("Train Start")
     train_start_time = time.time()
     for epoch in range(1, num_epoch + 1):
@@ -144,14 +150,21 @@ with tf.Session() as sess:
             print("[step: {}] loss: {}".format(epoch, total_loss))
     print("Train Finish, Collapse Time: {}s".format(time.time() - train_start_time))
 
+    # Test Session
     print("Test Start")
     test_start_time = time.time()
-    test_predict = sess.run(Y_prediction, feed_dict={X: testX})
-    rmse_val = sess.run(rmse, feed_dict={targets: testY, predictions: test_predict})
-    print("RMSE: {}".format(rmse_val))
+    test_predict = np.zeros((np.shape(testY)[0] + seq_length, np.shape(testY)[1]))
+    test_predict[seq_length:INPUT_DAYS+1] = sess.run(Y_prediction, feed_dict={X: testX[0: INPUT_DAYS-seq_length+1,]})
+    for days in range(INPUT_DAYS - seq_length + 1, DAYS - seq_length):
+        feedX = np.array([test_predict[days: days + seq_length]])
+        test_predict[days + seq_length] = sess.run(Y_prediction, feed_dict={X: feedX})
+
+    rmse_val = sess.run(rmse, feed_dict={targets: testY, predictions: test_predict[seq_length:]})
+    #
+    # print("RMSE: {}".format(rmse_val))
     print("Test Finish, Collapse Time: {}s".format(time.time() - test_start_time))
 
-    test_predict_reverse = np.reshape(reverse_min_max_scaling(prod[TEST_IDX], test_predict), (-1))
+    test_predict_reverse = np.reshape(reverse_min_max_scaling(prod[TEST_IDX], test_predict[seq_length:]), (-1))
     # predict data plot(red)
     plt.figure(1)
     plt.plot(day[seq_length:], test_predict_reverse, 'r')
