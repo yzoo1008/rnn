@@ -2,26 +2,21 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import os
 
-
-tf.set_random_seed(108)
 
 # path
 prod_path = './data/P9_WOPR.txt'
 day_path = './data/days.dat'
 
-# train Parameters
+# parameters
 input_data_dim = 1
 output_data_dim = 1
 
-seq_length = 15
-hidden_dim = 15
+seq_length = 20
+hidden_dim = 20
+num_stacked_layers = 3
 
-num_stacked_layers = 2
-keep_prob = 1
-
-learning_rate = 0.004
+learning_rate = 0.003
 num_epoch = 100
 check_step = 1
 
