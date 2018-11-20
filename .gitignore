@@ -107,4 +107,4 @@ venv.bak/
 .idea/
 
 # tensorboard
-./tf_models/
+tf_models/
