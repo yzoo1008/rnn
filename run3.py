@@ -17,10 +17,10 @@ save_file = base_path + '/model.ckpt'
 input_data_dim = 1
 output_data_dim = 1
 seq_length = 20
-hidden_dim = 20
+hidden_dim = 10
 num_stacked_layers = 3
 learning_rate = 0.005
-num_epochs = 150
+num_epochs = 5
 check_step = 1
 
 # macro
@@ -135,7 +135,7 @@ saver = tf.train.Saver()
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     print("\nRestore model in {}".format(save_file))
-    saver.restore(sess, save_file)
+    # saver.restore(sess, save_file)
 
     # Train Session
     print("Train Start")
@@ -148,7 +148,7 @@ with tf.Session() as sess:
         if epoch % check_step == 0:
             print("[Epoch: {}] Loss: {:.7f} at {:.3f}s".format(epoch, total_loss, time.time() - train_start_time))
     print("Train Finish for {:.3f}s".format(time.time() - train_start_time))
-    saver.save(sess, save_file)
+    # saver.save(sess, save_file)
 
     # Test Session
     print("Test model_{} Start".format(TEST_IDX))
