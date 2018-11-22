@@ -16,15 +16,15 @@ save_file = base_path + '/model.ckpt'
 # parameters
 input_data_dim = 1
 output_data_dim = 1
-seq_length = 20
-hidden_dim = 10
+seq_length = 35
+hidden_dim = 100
 num_stacked_layers = 3
-learning_rate = 0.005
-num_epochs = 5
+learning_rate = 0.009
+num_epochs = 150
 check_step = 1
 
 # macro
-TEST_IDX = 40
+TEST_IDX = 39
 MAX_INPUT_DATE = 149
 NUM_DAYS = -1       # be specified later
 NUM_MODELS = -1     # be specified later
@@ -143,45 +143,52 @@ class Model:
         self.predictions = tf.placeholder(tf.float32, [None, 1])
         self.rmse = tf.sqrt(tf.reduce_mean(tf.square(self.targets - self.predictions)))
 
-    def predict(self, x_test, kp=False):
-        return self.sess.run(self.Y_prediction, feed_dict={self.X: x_test, self.keep_prob: kp})
+        self.saver = tf.train.Saver()
 
-    def training(self, x_data, y_data, kp=False):
-        return self.sess.run([self.train, self.loss], feed_dict={self.X: x_data, self.Y: y_data, self.keep_prob: kp})
+    def predict(self, x_test):
+        return self.sess.run(self.Y_prediction, feed_dict={self.X: x_test, self.keep_prob: 1.0})
+
+    def training(self, x_data, y_data):
+        return self.sess.run([self.train, self.loss], feed_dict={self.X: x_data, self.Y: y_data, self.keep_prob: 0.7})
 
     def error(self, test, predict):
         return self.sess.run(self.rmse, feed_dict={self.targets: test, self.predictions: predict})
+
+    def save(self, save_file_path):
+        print("Saving Training model")
+        self.saver.save(self.sess, save_file_path)
 
 
 print("Make Model Finished for {:.3f}s\n".format(time.time() - make_model_start))
 time.sleep(1)
 
-
-# Train Session
-print("Train Start")
-train_start_time = time.time()
-
 sess = tf.Session()
 models = []
-NUM_M = 10
+NUM_M = 7
 for num_m in range(NUM_M):
     models.append(Model(sess, "model" + str(num_m)))
 
 sess.run(tf.global_variables_initializer())
+
+# Train Session
+print("\nTrain Start")
+train_start_time = time.time()
 
 for epoch in range(1, num_epochs + 1):
     avg_loss = 0.0
     for m_idx, m in enumerate(models):
         total_loss = 0.0
         for n in range(0, NUM_MODELS - 1):  # 1 is for test
-            _, step_loss = m.training(trainX[n], trainY[n], 0.7)
-            total_loss += (step_loss / (NUM_MODELS - 1))
+            _, step_loss = m.training(trainX[n], trainY[n])
+            total_loss += (step_loss / NUM_MODELS - 1)
         print("[Epoch: {}] [Model: {}] Loss: {:.7f}".format(epoch, m_idx, total_loss))
         avg_loss += total_loss / NUM_M
     if epoch % check_step == 0:
         print("[Epoch: {}] Finished! Loss: {:.7f} at {:.3f}s".format(epoch, avg_loss, time.time() - train_start_time))
 print("Train Finish for {:.3f}s".format(time.time() - train_start_time))
 
+for m_idx, m in enumerate(models):
+    m.save(base_path + '/model_' + str(m_idx) + '.ckpt')
 
 # Test Session
 print("Test model_{} Start".format(TEST_IDX))
@@ -191,10 +198,21 @@ error = 0.
 result_predict = np.zeros((np.shape(testY)[0], np.shape(testY)[1]))
 for m_idx, m in enumerate(models):
     test_predict = np.zeros((np.shape(testY)[0], np.shape(testY)[1]))   # shape = (393, 1)
-    test_predict[0:MAX_INPUT_DATE - seq_length + 1] = m.predict(testX[0: MAX_INPUT_DATE-seq_length+1, ], 1.0)
-    for days in range(MAX_INPUT_DATE - seq_length + 1, NUM_DAYS - seq_length):
+    test_predict[0:MAX_INPUT_DATE - seq_length + 1] = m.predict(testX[0: MAX_INPUT_DATE-seq_length+1, ])
+    for days in range(MAX_INPUT_DATE - seq_length + 1, MAX_INPUT_DATE + 1):
+        sd = MAX_INPUT_DATE - seq_length
+        feedX = testX[days][0:seq_length-(days-sd)]
+        # print(np.shape(feedX), np.shape(test_predict[days - (days - sd): days]))
+        # print(feedX, test_predict[days - (days - sd): days])
+        feedX = np.append(feedX, test_predict[days - (days - sd): days])
+        # print(np.shape(feedX))
+        # print(feedX)
+        feedX = np.reshape(feedX, (-1, np.shape(testX)[1], np.shape(testX)[2]))
+        test_predict[days] = m.predict(feedX)
+        # print(np.shape(feedX))
+    for days in range(MAX_INPUT_DATE + 1, NUM_DAYS - seq_length):
         feedX = np.array([test_predict[days - seq_length: days]])
-        test_predict[days] = m.predict(feedX, 1.0)
+        test_predict[days] = m.predict(feedX)
     error += m.error(testY, test_predict)/NUM_M
     result_predict += test_predict/NUM_M
 
