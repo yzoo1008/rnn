@@ -16,16 +16,16 @@ save_file = base_path + '/model.ckpt'
 # parameters
 input_data_dim = 1
 output_data_dim = 1
-seq_length = 35
+seq_length = 30
 hidden_dim = 100
-num_stacked_layers = 3
-learning_rate = 0.009
+num_stacked_layers = 2
+learning_rate = 0.01
 num_epochs = 150
 check_step = 1
 
 # macro
 TEST_IDX = 39
-MAX_INPUT_DATE = 149
+MAX_INPUT_DATE = 180  # 149 => 100 days
 NUM_DAYS = -1       # be specified later
 NUM_MODELS = -1     # be specified later
 
@@ -54,9 +54,9 @@ def rnn_cell():
 
 
 def lstm_cell(relu=False, keep_prob=1.0):
-    cell = tf.contrib.rnn.BasicLSTMCell(num_units=hidden_dim, state_is_tuple=True, activation=tf.tanh)
+    cell = tf.contrib.rnn.LSTMCell(num_units=hidden_dim, activation=tf.tanh)
     if relu:
-        cell = tf.contrib.rnn.BasicLSTMCell(num_units=hidden_dim, state_is_tuple=True, activation=tf.nn.relu)
+        cell = tf.contrib.rnn.LSTMCell(num_units=hidden_dim, activation=tf.nn.relu)
     return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=keep_prob)
 
 
@@ -178,9 +178,9 @@ for epoch in range(1, num_epochs + 1):
     avg_loss = 0.0
     for m_idx, m in enumerate(models):
         total_loss = 0.0
-        for n in range(0, NUM_MODELS - 1):  # 1 is for test
+        for n in range(0, (NUM_MODELS - 1)):  # 1 is for test
             _, step_loss = m.training(trainX[n], trainY[n])
-            total_loss += (step_loss / NUM_MODELS - 1)
+            total_loss += (step_loss / (NUM_MODELS - 1))
         print("[Epoch: {}] [Model: {}] Loss: {:.7f}".format(epoch, m_idx, total_loss))
         avg_loss += total_loss / NUM_M
     if epoch % check_step == 0:
