@@ -16,16 +16,16 @@ save_file = base_path + '/model.ckpt'
 # parameters
 input_data_dim = 1
 output_data_dim = 1
-seq_length = 30
-hidden_dim = 100
+seq_length = 40
+hidden_dim = 30
 num_stacked_layers = 2
-learning_rate = 0.01
-num_epochs = 150
+learning_rate = 0.005
+num_epochs = 30
 check_step = 1
 
 # macro
 TEST_IDX = 39
-MAX_INPUT_DATE = 180  # 149 => 100 days
+MAX_INPUT_DATE = 200  # 149 => 100 days
 NUM_DAYS = -1       # be specified later
 NUM_MODELS = -1     # be specified later
 
@@ -49,8 +49,9 @@ def reverse_min_max_scaling(org_x, x):
     return (x_np * (max_np - min_np + 1e-7)) + min_np
 
 
-def rnn_cell():
-    return tf.contrib.rnn.BasicRNNCell(num_units=hidden_dim, activation=tf.nn.relu)
+def rnn_cell(keep_prob=1.0):
+    cell = tf.contrib.rnn.BasicRNNCell(num_units=hidden_dim, activation=tf.nn.relu)
+    return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=keep_prob)
 
 
 def lstm_cell(relu=False, keep_prob=1.0):
@@ -129,7 +130,7 @@ class Model:
             self.Y = tf.placeholder(tf.float32, [None, 1])
             self.keep_prob = tf.placeholder(tf.float32)
 
-            stacked_rnn = [lstm_cell(False, self.keep_prob) for _ in range(num_stacked_layers)]
+            stacked_rnn = [rnn_cell(self.keep_prob) for _ in range(num_stacked_layers)]
             multi_cells = tf.contrib.rnn.MultiRNNCell(stacked_rnn, state_is_tuple=True)
             outputs, _ = tf.nn.dynamic_rnn(multi_cells, self.X, dtype=tf.float32)
             self.Y_prediction = tf.contrib.layers.fully_connected(outputs[:, -1], output_data_dim, activation_fn=None)
